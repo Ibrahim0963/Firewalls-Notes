@@ -1,0 +1,306 @@
+Fortigate:
+The company is fortnet and has a product call Fortigate firewall.
+
+Download and import the fortigate image to the vmware from https://support.fortinet.com
+To login: username: admin without password.
+
+#################################
+To set an ip and allow https to an interface:#
+fortigate# show system interface
+fortigate# config system interface
+fortigate# edit port1 - ports are 0-8, you can edit anyone
+fortigate# set ip 10.10.10.16a 255.255.255.0 
+fortigate# set allowaccess http https - you can add any protocol you want like ssh, telnet, etc....
+fortigate# end
+
+Now you can access the fortigate admin interface, credentials are admin without a password.
+
+#################################
+To add/edit/remove/etc.. users:
+System -> Administrator - create users
+System -> Admin Profiles - create user profiles, each profile has its own permissions
+- prof_admin profile has only read permissions only 
+- super_admin profile has everything 
+- you can create a costume profiles, as you like with specific permissions
+
+To manage users with cli:
+fortigate# config system admin
+fortigate# edit $username
+fortigate# set trusthost1 10.10.10.20/24 - to add specific hosts that allow to access this username!
+fortigate# end
+
+#################################
+To change the firewall name, edit the time, ports, 
+System -> Setting
+
+#################################
+To configure a backup:
+There is an encrypted backup and a plaintext backup.
+click on the user picture right above -> Configuration -> Backup -> Local-PC/USB
+
+to restore a backup:
+click on the user picture right above -> Configuration -> Restore
+Note: To transfer the fortigate configuration to another fortigate, you have to have the same models and the same firmware
+
+#################################
+to setup interfaces:
+Network -> Interfaces
+All installed interfaces will be displayed, so you can edit anyone and give the interface a name, alias, ip, role, administrative access
+
+#################################
+fortigate cli:
+Command (config, show, get, exe) + Sub-Command (edit, set) + Objects (interface)
+
+Examples:
+fortigate# get hardware status - show firewall hardware resources
+fortigate# get hardware cpu
+
+fortigate# config firewall address 
+fortigate# edit ftpserver
+fortigate# set type ipmask
+fortigate# set subnet 10.10.10.23 255.255.255.255
+fortigate# end
+
+fortigate# config system interface
+fortigate# edit internal9/port5 - You can add the number of the port
+
+fortigate# show system interface
+fortigate# show full-configuration
+
+#################################
+to create users and users group:
+User & Device -> User Definition
+User & Device -> User Group - create groups and assign users to ita
+We create a group and assign some users to it, so that we later apply policies on specific users (allow/deny access)
+
+with cli create users and groups and assign users to a group:
+fortigate# config user local
+fortigate# edit testuser4 - edit the user named "testuser4", if not exists, add a user named "testuser4"
+fortigate# set type password
+fortigate# set password "12345"
+fortigate# end
+
+fortigate# config user group
+fortigate# edit testusers - edit the group named "testusers", if not exists, add a group named "testusers"
+fortigate# set member testuser testuser4
+fortigate# end
+
+#################################
+System Status commands:
+Main
+Log & Report -> *
+
+with cli:
+fortigate# get system status
+fortigate# show system interface
+fortigate# get system session list - show session, that have been held on the fortigate
+fortigate# diag sys top - list process, that are running on the fortigate
+fortigate# get system performance status - show cpu in terms of usage, the uptime of the system, average network usage, viruses cought, IPS attacks blocked, etc...
+fortigate# show system dns
+fortigate# show system dhcp server
+fortigate# show full-configuration | grep -fi internal - to grep specific informations like users, admins, passwords, etc..
+fortigate# get firewall policy - show the policy that are runnnig
+fortigate# show firewall policy - show policy details
+fortigate# get log disk setting - show log recording setting
+fortigate# config log disk setting - to change the log setting configuration
+fortigate# show full - to show the full command, that I can use to configure the log disk setting
+
+#################################
+to enable feature visibility:
+System -> feature visibility - if you enable any feature, you will see more details about it under Security Profiles.
+
+#################################
+execute commands:
+fortigate# exe ping google.com
+fortigate# exe ping-options - will show you all the options, to edit them
+fortigate# exe ping-options repeat-count 10 - to send 10 packets instead of the default value
+fortigate# exe ping google.com
+
+#################################
+To setup email alerts:
+System -> Advanced (Email Service) - to setup the email addresses setting from to 
+Login & Report -> Email Alert Setting (Choose the alerts, you interested in)
+If you login, you will get an alert
+
+#################################
+Policies: is a rulea, it matches patterns of the traffic like dst and src ip or port, device type, etc...
+Policy & Objects -> IPv4aaa Policy (create new)
+- Name (policy name)
+- incoming Interface  
+- outgoing Interface 
+- Source
+- Destination 
+- Schedule (to set the time, where this policy avialable)
+- Action ACCEPT/DENAY/LEARN (Learn using AI to learn traffics and allow/deny depends on the learned data)
+- NAT
+- Security Profiles
+- Logging
+
+#################################
+Operating Modes: 2 Operating Modes
+1. NAT Mode: Fortigate acts here as an OSI layer 3 device (like router, each interface has its own ip and broadcast domain)
+2. Transparent Mode: Fortigate acts here as an OSI layer 2 device (like switch, each interface does not has ip and traffic/frames are forwarded based on athe MAC)
+When do we use, what ??? (no clear answer yet!)
+
+To change the fortigate from NAT mode to Transparent mode with the cli:
+fortigate# config system settings
+fortigate# opmode transparent
+
+fortigate# get router info routing-table all - to show the routing/ip table
+fortigate# diagnose netlink brctl name host root.b - to show the mac table
+
+in Transparent Mode every interface is on the same broadcast domain even if we interfaces associated with its own VLAN domains,
+so each packet will arrive fortigate will forward it to any internal interface until it finds and dst MAC. This could be an issue especially on large networks, 
+so we either create different domains for different interfaces or to split the broadcast domain into several broadcast domain, that called "a forward domain".
+so we will create 3 internal vlans to 3 internal interfaces, then we create the same forward domain for these 3 interfaces, so any packets arrives on one of those interfaces will only be broadcasted to the other 2 interfaces.
+Network -> Interface (create new -> Interface) and give the interface a
+- name 
+- alias
+- Type: Vlan
+- Interface: to the specific interface you want
+- vlan id 
+Note: Each vlan has a different name and vlan id.
+
+Now we group these interfaces to one domain with cli:
+fortigate# config system interface
+fortigate# edit $interface_name1
+fortigate# set forward-domain 11
+fortigate# next
+fortigate# edit $interface_name2
+fortigate# set forward-domain 11
+fortigate# nex
+fortigate# edit $interface_name3
+fortigate# set forward-domain 11
+fortigate# next
+fortigate# end
+Now any traffic will comes to any on these interfaces will only be braodcasted to the other 2 interfaces.
+
+#################################
+To setup an interface:
+- Alias
+- type: Physical interface
+- Role: LAN
+- Manual IP 
+- adminstrative access
+- DHCP Service (if needed)
+- Enable Device Detection (allow fortigate to detect which device is connected to it. Used for filtering/blocking/allowing specific systems)
+- Enable Active Scanninga
+
+Next we do after creating the interface, to grab a switch and connect every host on that interface to that switch and connect that the switch to our interface. 
+Then connect the interface to our ISP modem (interface that goes to WAN) and lastly configure a static route.
+
+#################################
+Zones: is a way to group different interfaces (that does not have any references such as firewall policies) and group them together into a logical zone, to use that zone in our policy configuration.
+
+Create an interface
+Network -> Interfaces (create new -> interface)
+- alias
+- Role: LAN
+- IP
+- Administrative Access: Ping + SNMP
+- DHCP
+- Enable Device Detection
+- Enable Active Scanning
+
+Create a new Zone:
+Network -> Interfaces (Create new -> Zone)
+- Name
+- Interfaces Members (set the interfaces you created/want)
+
+So we use now this zone in our policy configuration to configure one unified policy that all members of that interfaces in the zone will have to obey.
+
+#################################
+To enable DHCP Server:
+Network -> Interfaces (create new -> interface)
+Steps already know and the terms are clear so just follow your kownledge and setup the DHCP server
+Note: Mac Reservation + Access Control section is for specifying a MAC to any ip or block a mac address.
+
+With cli:
+fortigate# config system dhcp server
+fortigate# show dhcp server (?)
+fortigate# edit $dhcp_server_number
+fortigate# show full
+fortigate# set dns-server 1.1.1.1 - change dns server ip
+fortigate# next
+fortigate# end
+
+Open the additional dhcp options tab: (play around with it)
+
+#################################
+To enable VLAN's:
+Used in a network with one broadcast domain, so we create VLAN's to isolate some devices from each other and put specific ones in a sperated broadcast domain.
+In large network, on broadcast domain may be an issue, so you have to use Virtual LAN (VLAN) to split the network to many broadcast domains.
+This makes the network much more secure and efficient, because a few and not all devices recieve unnecessary packets. 
+VLAN can be configured on a NAT mode or Transparent mode fortigate.
+Onces we configure the VLAN on a port, the port becomes a trunk port (means a port capable of delivering packets from different domains and not only the domains that was configured initially on the physical interface)
+
+Choose a physical interface/port and divide it to 2 broadcast domains
+select an interface then (create new -> VLAN) and create a VLAN. The VLAN will be added automatically under the selected interface.
+Then create 2 policies (Policy & Objects -> IPv4 Policy - (create new -> policy)).
+The 1. policy: Incoming Interface set to the first VLAN/network, Outgoing set to WAN and Service set to only FTP 
+The 2. policy: Incoming Interface set to the second VLAN/network, Outgoing set to WAN and Service set to all
+
+Summary: The above show us that we can have one interface and this interface has many broadcast domains and each broadcast domain can have its own policy.
+
+#################################
+To create a hardware virtual switch:
+There is a soft switch (switch on the application level) and hardware switch (switch on the hardware level)
+
+Configure hardware virtual switch with cli:
+fortigate# config system virtual switch
+fortigate# get - to show the configured virtual switches
+fortigate# edit $vswitch_name - edith switch, if not exist create it
+fortigate# set physical-switch sw0 - set th v-switch to the physical port/interface
+fortigate# config port
+fortigate# edit $port/interface_name1
+fortigate# next
+fortigate# edit $port/interface_name2
+fortigate# next
+fortigate# edit $port/interface_name3
+fortigate# next
+fortigate# end
+fortigate# config system virtual switch
+fortigate# get
+fortigate# end
+
+and from the GUI interface under network -> interfaces -> select the v-switch and edit it as you like
+
+#################################
+NAT:
+Source NAT: For outgoing traffic
+Destination NAT: For incoming traffic
+Dynamic NAT: Maps the private ip's to the first avialable public ip's 
+Overloading NATa == Static NAT: Maps the private ip's to only single public ip, that can be done with port assigned.
+
+to configure Dynamic NAT:
+Policy & Objects -> IPv4 Policy -> select any interface and edit it -> enable NAT -> Dynamic ip pool
+- Name
+- Type
+- IP Range
+
+to configure Static NAT:
+Policy & Objects -> Addresses (create new -> address) 
+Policy & Objects -> Virtual IP's (create new)
+
+#################################
+Routing:
+If the fortigate is deployed in NAT mode, it acts as OSI layer 3 router device.
+fortigate# get router info routing-table all
+fortigate# get router info routing-table database
+
+Network -> Static Routes (create new)
+- Detination
+- Gateway
+- Interface
+- Administrative Distance
+
+configure with cli:
+fortigate# config static static
+fortigate# show full
+
+Monitor -> Routing Monitor
+
+#################################
+to configure VPN:
+
+#################################
